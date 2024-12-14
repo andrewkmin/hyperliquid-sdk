@@ -1,8 +1,30 @@
 // test_exchange_api.ts
 
+const path = require("path");
+// import * as dotenv from "dotenv";
+const { TurnkeySigner, serializeSignature } = require("@turnkey/ethers");
+const { Turnkey: TurnkeyServerSDK } = require("@turnkey/sdk-server");
+
 const { Hyperliquid } = require("../dist/index");
 const readline = require("readline");
-require("dotenv").config();
+// require("dotenv").config();
+
+// Load environment variables from `.env.local`
+require("dotenv").config({ path: path.resolve(process.cwd(), ".env.local") });
+
+const turnkeyClient = new TurnkeyServerSDK({
+  apiBaseUrl: process.env.TURNKEY_BASE_URL,
+  apiPrivateKey: process.env.TURNKEY_API_PRIVATE_KEY,
+  apiPublicKey: process.env.TURNKEY_API_PUBLIC_KEY,
+  defaultOrganizationId: process.env.TURNKEY_ORGANIZATION_ID,
+});
+
+// Initialize a Turnkey Signer
+const turnkeySigner = new TurnkeySigner({
+  client: turnkeyClient.apiClient(),
+  organizationId: process.env.TURNKEY_ORGANIZATION_ID,
+  signWith: process.env.TURNKEY_SIGN_WITH,
+});
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -19,10 +41,9 @@ function waitForUserInput(message) {
 
 async function testCustomExchangeAPI() {
   // Initialize the SDK (replace with your actual private key and other necessary parameters)
-  const private_key = process.env.private_key;
-  const user_address = process.env.user_address;
-  const testnet = process.env.mainnet ? false : true;// false for mainnet, true for testnet
-  const sdk = new Hyperliquid(private_key, testnet); 
+  const testnet = process.env.MAINNET ? false : true;// false for mainnet, true for testnet
+  const walletAddress = process.env.TURNKEY_SIGN_WITH;
+  const sdk = new Hyperliquid(testnet, turnkeySigner, walletAddress); 
 
   try {
     const cancelResponse = await sdk.custom.cancelAllOrders();
@@ -36,10 +57,12 @@ async function testCustomExchangeAPI() {
 
 async function testExchangeAPI() {
   // Initialize the SDK (replace with your actual private key and other necessary parameters)
-  const private_key = process.env.private_key;
-  const user_address = process.env.user_address;
-  const testnet = process.env.mainnet ? false : true; // false for mainnet, true for testnet
-  const sdk = new Hyperliquid(private_key, testnet); 
+  const testnet = process.env.MAINNET ? false : true;// false for mainnet, true for testnet
+  const walletAddress = process.env.TURNKEY_SIGN_WITH;
+  const sdk = new Hyperliquid(testnet, turnkeySigner, walletAddress); 
+
+  console.log('sdk', sdk);
+
   try {
     console.log("Testing ExchangeAPI endpoints:");
 

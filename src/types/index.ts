@@ -1,3 +1,5 @@
+import { HDNodeWallet, type Wallet, type Signer } from 'ethers';
+
 export type Tif = 'Alo' | 'Ioc' | 'Gtc';
 export type TriggerType = 'tp' | 'sl';
 export type LimitOrder = { tif: Tif };
@@ -34,6 +36,7 @@ export interface Builder {
     address: string;
     fee: number;
 }
+export type EthersSigner = Wallet | HDNodeWallet | Signer;
 
 export interface AllMids {
     [coin: string]: string;

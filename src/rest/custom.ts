@@ -1,32 +1,39 @@
 // src/rest/custom.ts
 
-import { ethers } from 'ethers';
+import * as path from "path";
+import * as dotenv from "dotenv";
+import { TurnkeySigner, serializeSignature } from "@turnkey/ethers";
+import { Turnkey as TurnkeyServerSDK } from "@turnkey/sdk-server";
+
 import { InfoAPI } from './info';
 import { ExchangeAPI } from './exchange';
-import { UserOpenOrders } from '../types';
+import { UserOpenOrders, EthersSigner } from '../types';
 import { OrderResponse, CancelOrderRequest, OrderRequest, OrderType } from '../types/index';
 import { CancelOrderResponse } from '../utils/signing'
 import { SymbolConversion } from '../utils/symbolConversion';
 import { floatToWire } from '../utils/signing';
 
+// Load environment variables from `.env.local`
+dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
+
 export class CustomOperations {
+    private turnkeySigner: TurnkeySigner;
     private exchange: ExchangeAPI;
     private infoApi: InfoAPI;
-    private wallet: ethers.Wallet;
     private symbolConversion: SymbolConversion;
     private walletAddress: string | null;
 
-    constructor(exchange: ExchangeAPI, infoApi: InfoAPI, privateKey: string, symbolConversion: SymbolConversion, walletAddress: string | null = null) {
+    constructor(exchange: ExchangeAPI, infoApi: InfoAPI, symbolConversion: SymbolConversion, turnkeySigner: TurnkeySigner, walletAddress: string | null = null) {
         this.exchange = exchange;
         this.infoApi = infoApi;
-        this.wallet = new ethers.Wallet(privateKey);
         this.symbolConversion = symbolConversion;
+        this.turnkeySigner = turnkeySigner;
         this.walletAddress = walletAddress;
     }
 
     async cancelAllOrders(symbol?: string): Promise<CancelOrderResponse> {
         try {
-            const address = this.walletAddress || this.wallet.address;
+            const address = this.walletAddress || await this.turnkeySigner.getAddress();
             const openOrders: UserOpenOrders = await this.infoApi.getUserOpenOrders(address);
 
             let ordersToCancel: UserOpenOrders;
@@ -122,7 +129,7 @@ export class CustomOperations {
         cloid?: string
     ): Promise<OrderResponse> {
         const convertedSymbol = await this.symbolConversion.convertSymbol(symbol);
-        const address = this.walletAddress || this.wallet.address;
+        const address = this.walletAddress || await this.turnkeySigner.getAddress();
         const positions = await this.infoApi.perpetuals.getClearinghouseState(address);
         for (const position of positions.assetPositions) {
             const item = position.position;
@@ -158,7 +165,7 @@ export class CustomOperations {
 
     async closeAllPositions(slippage: number = this.DEFAULT_SLIPPAGE): Promise<OrderResponse[]> {
         try {
-            const address = this.walletAddress || this.wallet.address;
+            const address = this.walletAddress || await this.turnkeySigner.getAddress();
             const positions = await this.infoApi.perpetuals.getClearinghouseState(address);
             const closeOrders: Promise<OrderResponse>[] = [];
 
