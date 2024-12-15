@@ -4,11 +4,16 @@
   "description": "SDK for Hyperliquid API",
   "main": "src/index.ts",
   "types": "dist/index.d.ts",
-  "files": ["src", "dist"],
+  "files": [
+    "src",
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "prettier-all:check": "prettier --check \"**/*.{css,html,js,json,md,ts,tsx,yaml,yml}\" --ignore-path ./.prettierignore",
+    "prettier-all:write": "prettier --write \"**/*.{css,html,js,json,md,ts,tsx,yaml,yml}\" --ignore-path ./.prettierignore"
   },
   "keywords": [
     "hyperliquid",
@@ -26,6 +31,8 @@
   "license": "MIT",
   "dependencies": {
     "@msgpack/msgpack": "^3.0.0-beta2",
+    "@turnkey/ethers": "^1.1.6",
+    "@turnkey/sdk-server": "^1.7.0",
     "@types/ws": "^8.5.11",
     "axios": "^1.7.2",
     "ethers": "^6.13.2",
@@ -40,6 +47,7 @@
     "url": "https://github.com/nomeida/hyperliquid-api"
   },
   "devDependencies": {
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.4.7",
+    "prettier": "^3.4.2"
   }
 }
