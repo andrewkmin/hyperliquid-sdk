@@ -1,9 +1,9 @@
-import { ethers } from 'ethers';
-import { TurnkeySigner } from '@turnkey/ethers';
+import { ethers } from "ethers";
+import { TurnkeySigner } from "@turnkey/ethers";
 
-import { RateLimiter } from '../utils/rateLimiter';
-import { HttpApi } from '../utils/helpers';
-import { InfoAPI } from './info';
+import { RateLimiter } from "../utils/rateLimiter";
+import { HttpApi } from "../utils/helpers";
+import { InfoAPI } from "./info";
 import {
   signL1Action,
   orderToWire,
@@ -12,8 +12,8 @@ import {
   signUserSignedAction,
   signUsdTransferAction,
   signWithdrawFromBridgeAction,
-} from '../utils/signing';
-import * as CONSTANTS from '../types/constants';
+} from "../utils/signing";
+import * as CONSTANTS from "../types/constants";
 
 import {
   Builder,
@@ -21,12 +21,12 @@ import {
   Grouping,
   Order,
   OrderRequest,
-  EthersSigner
-} from '../types/index';
+  EthersSigner,
+} from "../types/index";
 
-import { ExchangeType, ENDPOINTS } from '../types/constants';
-import { SymbolConversion } from '../utils/symbolConversion';
-import { floatToWire } from '../utils/signing';
+import { ExchangeType, ENDPOINTS } from "../types/constants";
+import { SymbolConversion } from "../utils/symbolConversion";
+import { floatToWire } from "../utils/signing";
 
 // const IS_MAINNET = true; // Make sure this matches the IS_MAINNET in signing.ts
 
@@ -44,9 +44,11 @@ export class ExchangeAPI {
     private info: InfoAPI,
     rateLimiter: RateLimiter,
     symbolConversion: SymbolConversion,
-    walletAddress: string | null = null
+    walletAddress: string | null = null,
   ) {
-    const baseURL = testnet ? CONSTANTS.BASE_URLS.TESTNET : CONSTANTS.BASE_URLS.PRODUCTION;
+    const baseURL = testnet
+      ? CONSTANTS.BASE_URLS.TESTNET
+      : CONSTANTS.BASE_URLS.PRODUCTION;
     this.IS_MAINNET = !testnet;
     this.httpApi = new HttpApi(baseURL, ENDPOINTS.EXCHANGE, rateLimiter);
     this.turnkeySigner = turnkeySigner;
@@ -61,33 +63,48 @@ export class ExchangeAPI {
     }
     if (!this._i) {
       this._i = 1;
-      setTimeout(() => { try { this.setReferrer(CONSTANTS.SDK_CODE) } catch {} });
+      setTimeout(() => {
+        try {
+          this.setReferrer(CONSTANTS.SDK_CODE);
+        } catch {}
+      });
     }
     return index;
   }
 
   async placeOrder(orderRequest: OrderRequest): Promise<any> {
-    const { orders, vaultAddress = null, grouping = "na", builder } = orderRequest;
+    const {
+      orders,
+      vaultAddress = null,
+      grouping = "na",
+      builder,
+    } = orderRequest;
     const ordersArray = orders ?? [orderRequest as Order];
 
     try {
       const assetIndexCache = new Map<string, number>();
 
       const orderWires = await Promise.all(
-        ordersArray.map(async o => {
+        ordersArray.map(async (o) => {
           let assetIndex = assetIndexCache.get(o.coin);
           if (assetIndex === undefined) {
             assetIndex = await this.getAssetIndex(o.coin);
             assetIndexCache.set(o.coin, assetIndex);
           }
           return orderToWire(o, assetIndex);
-        })
+        }),
       );
 
       const actions = orderWireToAction(orderWires, grouping, builder);
 
       const nonce = Date.now();
-      const signature = await signL1Action(this.turnkeySigner, actions, vaultAddress, nonce, this.IS_MAINNET);
+      const signature = await signL1Action(
+        this.turnkeySigner,
+        actions,
+        vaultAddress,
+        nonce,
+        this.IS_MAINNET,
+      );
 
       const payload = { action: actions, nonce, signature, vaultAddress };
       return this.httpApi.makeRequest(payload, 1);
@@ -97,23 +114,35 @@ export class ExchangeAPI {
   }
 
   //Cancel using order id (oid)
-  async cancelOrder(cancelRequests: CancelOrderRequest | CancelOrderRequest[]): Promise<CancelOrderResponse> {
+  async cancelOrder(
+    cancelRequests: CancelOrderRequest | CancelOrderRequest[],
+  ): Promise<CancelOrderResponse> {
     try {
-      const cancels = Array.isArray(cancelRequests) ? cancelRequests : [cancelRequests];
+      const cancels = Array.isArray(cancelRequests)
+        ? cancelRequests
+        : [cancelRequests];
 
       // Ensure all cancel requests have asset indices
-      const cancelsWithIndices = await Promise.all(cancels.map(async (req) => ({
-        ...req,
-        a: await this.getAssetIndex(req.coin)
-      })));
+      const cancelsWithIndices = await Promise.all(
+        cancels.map(async (req) => ({
+          ...req,
+          a: await this.getAssetIndex(req.coin),
+        })),
+      );
 
       const action = {
         type: ExchangeType.CANCEL,
-        cancels: cancelsWithIndices.map(({ a, o }) => ({ a, o }))
+        cancels: cancelsWithIndices.map(({ a, o }) => ({ a, o })),
       };
 
       const nonce = Date.now();
-      const signature = await signL1Action(this.turnkeySigner, action, null, nonce, this.IS_MAINNET);
+      const signature = await signL1Action(
+        this.turnkeySigner,
+        action,
+        null,
+        nonce,
+        this.IS_MAINNET,
+      );
 
       const payload = { action, nonce, signature };
       return this.httpApi.makeRequest(payload, 1);
@@ -128,10 +157,16 @@ export class ExchangeAPI {
       const assetIndex = await this.getAssetIndex(symbol);
       const action = {
         type: ExchangeType.CANCEL_BY_CLOID,
-        cancels: [{ asset: assetIndex, cloid }]
+        cancels: [{ asset: assetIndex, cloid }],
       };
       const nonce = Date.now();
-      const signature = await signL1Action(this.turnkeySigner, action, null, nonce, this.IS_MAINNET);
+      const signature = await signL1Action(
+        this.turnkeySigner,
+        action,
+        null,
+        nonce,
+        this.IS_MAINNET,
+      );
 
       const payload = { action, nonce, signature };
       return this.httpApi.makeRequest(payload, 1);
@@ -149,10 +184,16 @@ export class ExchangeAPI {
       const action = {
         type: ExchangeType.MODIFY,
         oid,
-        order: orderWire
+        order: orderWire,
       };
       const nonce = Date.now();
-      const signature = await signL1Action(this.turnkeySigner, action, null, nonce, this.IS_MAINNET);
+      const signature = await signL1Action(
+        this.turnkeySigner,
+        action,
+        null,
+        nonce,
+        this.IS_MAINNET,
+      );
 
       const payload = { action, nonce, signature };
       return this.httpApi.makeRequest(payload, 1);
@@ -162,26 +203,33 @@ export class ExchangeAPI {
   }
 
   //Modify multiple orders at once
-  async batchModifyOrders(modifies: Array<{ oid: number, order: Order }>): Promise<any> {
+  async batchModifyOrders(
+    modifies: Array<{ oid: number; order: Order }>,
+  ): Promise<any> {
     try {
       // First, get all asset indices in parallel
       const assetIndices = await Promise.all(
-        modifies.map(m => this.getAssetIndex(m.order.coin))
+        modifies.map((m) => this.getAssetIndex(m.order.coin)),
       );
 
       const action = {
         type: ExchangeType.BATCH_MODIFY,
         modifies: modifies.map((m, index) => {
-
           return {
             oid: m.oid,
-            order: orderToWire(m.order, assetIndices[index])
+            order: orderToWire(m.order, assetIndices[index]),
           };
-        })
+        }),
       };
 
       const nonce = Date.now();
-      const signature = await signL1Action(this.turnkeySigner, action, null, nonce, this.IS_MAINNET);
+      const signature = await signL1Action(
+        this.turnkeySigner,
+        action,
+        null,
+        nonce,
+        this.IS_MAINNET,
+      );
 
       const payload = { action, nonce, signature };
       return this.httpApi.makeRequest(payload, 1);
@@ -191,17 +239,27 @@ export class ExchangeAPI {
   }
 
   //Update leverage. Set leverageMode to "cross" if you want cross leverage, otherwise it'll set it to "isolated by default"
-  async updateLeverage(symbol: string, leverageMode: string, leverage: number): Promise<any> {
+  async updateLeverage(
+    symbol: string,
+    leverageMode: string,
+    leverage: number,
+  ): Promise<any> {
     try {
       const assetIndex = await this.getAssetIndex(symbol);
       const action = {
         type: ExchangeType.UPDATE_LEVERAGE,
         asset: assetIndex,
         isCross: leverageMode === "cross",
-        leverage: leverage
+        leverage: leverage,
       };
       const nonce = Date.now();
-      const signature = await signL1Action(this.turnkeySigner, action, null, nonce, this.IS_MAINNET);
+      const signature = await signL1Action(
+        this.turnkeySigner,
+        action,
+        null,
+        nonce,
+        this.IS_MAINNET,
+      );
 
       const payload = { action, nonce, signature };
       return this.httpApi.makeRequest(payload, 1);
@@ -211,17 +269,27 @@ export class ExchangeAPI {
   }
 
   //Update how much margin there is on a perps position
-  async updateIsolatedMargin(symbol: string, isBuy: boolean, ntli: number): Promise<any> {
+  async updateIsolatedMargin(
+    symbol: string,
+    isBuy: boolean,
+    ntli: number,
+  ): Promise<any> {
     try {
       const assetIndex = await this.getAssetIndex(symbol);
       const action = {
         type: ExchangeType.UPDATE_ISOLATED_MARGIN,
         asset: assetIndex,
         isBuy,
-        ntli
+        ntli,
       };
       const nonce = Date.now();
-      const signature = await signL1Action(this.turnkeySigner, action, null, nonce, this.IS_MAINNET);
+      const signature = await signL1Action(
+        this.turnkeySigner,
+        action,
+        null,
+        nonce,
+        this.IS_MAINNET,
+      );
 
       const payload = { action, nonce, signature };
       return this.httpApi.makeRequest(payload, 1);
@@ -235,44 +303,57 @@ export class ExchangeAPI {
     try {
       const action = {
         type: ExchangeType.USD_SEND,
-        hyperliquidChain: this.IS_MAINNET ? 'Mainnet' : 'Testnet',
-        signatureChainId: '0xa4b1',
+        hyperliquidChain: this.IS_MAINNET ? "Mainnet" : "Testnet",
+        signatureChainId: "0xa4b1",
         destination: destination,
         amount: amount.toString(),
-        time: Date.now()
+        time: Date.now(),
       };
-      const signature = await signUsdTransferAction(this.turnkeySigner, action, this.IS_MAINNET);
+      const signature = await signUsdTransferAction(
+        this.turnkeySigner,
+        action,
+        this.IS_MAINNET,
+      );
 
       const payload = { action, nonce: action.time, signature };
-      return this.httpApi.makeRequest(payload, 1, this.walletAddress || await this.turnkeySigner.getAddress());
+      return this.httpApi.makeRequest(
+        payload,
+        1,
+        this.walletAddress || (await this.turnkeySigner.getAddress()),
+      );
     } catch (error) {
       throw error;
     }
   }
 
   //Transfer SPOT assets i.e PURR to another wallet (doesn't touch bridge, so no fees)
-  async spotTransfer(destination: string, token: string, amount: string): Promise<any> {
+  async spotTransfer(
+    destination: string,
+    token: string,
+    amount: string,
+  ): Promise<any> {
     try {
       const action = {
         type: ExchangeType.SPOT_SEND,
-        hyperliquidChain: this.IS_MAINNET ? 'Mainnet' : 'Testnet',
-        signatureChainId: '0xa4b1',
+        hyperliquidChain: this.IS_MAINNET ? "Mainnet" : "Testnet",
+        signatureChainId: "0xa4b1",
         destination,
         token,
         amount,
-        time: Date.now()
+        time: Date.now(),
       };
       const signature = await signUserSignedAction(
         this.turnkeySigner,
         action,
         [
-          { name: 'hyperliquidChain', type: 'string' },
-          { name: 'destination', type: 'string' },
-          { name: 'token', type: 'string' },
-          { name: 'amount', type: 'string' },
-          { name: 'time', type: 'uint64' }
+          { name: "hyperliquidChain", type: "string" },
+          { name: "destination", type: "string" },
+          { name: "token", type: "string" },
+          { name: "amount", type: "string" },
+          { name: "time", type: "uint64" },
         ],
-        'HyperliquidTransaction:SpotSend', this.IS_MAINNET
+        "HyperliquidTransaction:SpotSend",
+        this.IS_MAINNET,
       );
 
       const payload = { action, nonce: action.time, signature };
@@ -287,13 +368,17 @@ export class ExchangeAPI {
     try {
       const action = {
         type: ExchangeType.WITHDRAW,
-        hyperliquidChain: this.IS_MAINNET ? 'Mainnet' : 'Testnet',
-        signatureChainId: '0xa4b1',
+        hyperliquidChain: this.IS_MAINNET ? "Mainnet" : "Testnet",
+        signatureChainId: "0xa4b1",
         destination: destination,
         amount: amount.toString(),
-        time: Date.now()
+        time: Date.now(),
       };
-      const signature = await signWithdrawFromBridgeAction(this.turnkeySigner, action, this.IS_MAINNET);
+      const signature = await signWithdrawFromBridgeAction(
+        this.turnkeySigner,
+        action,
+        this.IS_MAINNET,
+      );
 
       const payload = { action, nonce: action.time, signature };
       return this.httpApi.makeRequest(payload, 1);
@@ -303,17 +388,26 @@ export class ExchangeAPI {
   }
 
   //Transfer between spot and perpetual wallets (intra-account transfer)
-  async transferBetweenSpotAndPerp(usdc: number, toPerp: boolean): Promise<any> {
+  async transferBetweenSpotAndPerp(
+    usdc: number,
+    toPerp: boolean,
+  ): Promise<any> {
     try {
       const action = {
         type: ExchangeType.SPOT_USER,
         classTransfer: {
           usdc: usdc * 1e6,
-          toPerp: toPerp
-        }
+          toPerp: toPerp,
+        },
       };
       const nonce = Date.now();
-      const signature = await signL1Action(this.turnkeySigner, action, null, nonce, this.IS_MAINNET);
+      const signature = await signL1Action(
+        this.turnkeySigner,
+        action,
+        null,
+        nonce,
+        this.IS_MAINNET,
+      );
 
       const payload = { action, nonce, signature };
       return this.httpApi.makeRequest(payload, 1);
@@ -327,7 +421,13 @@ export class ExchangeAPI {
     try {
       const action = { type: ExchangeType.SCHEDULE_CANCEL, time };
       const nonce = Date.now();
-      const signature = await signL1Action(this.turnkeySigner, action, null, nonce, this.IS_MAINNET);
+      const signature = await signL1Action(
+        this.turnkeySigner,
+        action,
+        null,
+        nonce,
+        this.IS_MAINNET,
+      );
 
       const payload = { action, nonce, signature };
       return this.httpApi.makeRequest(payload, 1);
@@ -337,16 +437,26 @@ export class ExchangeAPI {
   }
 
   //Transfer between vault and perpetual wallets (intra-account transfer)
-  async vaultTransfer(vaultAddress: string, isDeposit: boolean, usd: number): Promise<any> {
+  async vaultTransfer(
+    vaultAddress: string,
+    isDeposit: boolean,
+    usd: number,
+  ): Promise<any> {
     try {
       const action = {
         type: ExchangeType.VAULT_TRANSFER,
         vaultAddress,
         isDeposit,
-        usd
+        usd,
       };
       const nonce = Date.now();
-      const signature = await signL1Action(this.turnkeySigner, action, null, nonce, this.IS_MAINNET);
+      const signature = await signL1Action(
+        this.turnkeySigner,
+        action,
+        null,
+        nonce,
+        this.IS_MAINNET,
+      );
 
       const payload = { action, nonce, signature };
       return this.httpApi.makeRequest(payload, 1);
@@ -359,10 +469,16 @@ export class ExchangeAPI {
     try {
       const action = {
         type: ExchangeType.SET_REFERRER,
-        code
+        code,
       };
       const nonce = Date.now();
-      const signature = await signL1Action(this.turnkeySigner, action, null, nonce, this.IS_MAINNET);
+      const signature = await signL1Action(
+        this.turnkeySigner,
+        action,
+        null,
+        nonce,
+        this.IS_MAINNET,
+      );
 
       const payload = { action, nonce, signature };
       return this.httpApi.makeRequest(payload, 1);
@@ -370,5 +486,4 @@ export class ExchangeAPI {
       throw error;
     }
   }
-
 }

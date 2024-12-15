@@ -1,13 +1,11 @@
 // test_exchange_api.ts
 
 const path = require("path");
-// import * as dotenv from "dotenv";
 const { TurnkeySigner, serializeSignature } = require("@turnkey/ethers");
 const { Turnkey: TurnkeyServerSDK } = require("@turnkey/sdk-server");
 
 const { Hyperliquid } = require("../dist/index");
 const readline = require("readline");
-// require("dotenv").config();
 
 // Load environment variables from `.env.local`
 require("dotenv").config({ path: path.resolve(process.cwd(), ".env.local") });
@@ -60,8 +58,6 @@ async function testExchangeAPI() {
   const testnet = process.env.MAINNET ? false : true;// false for mainnet, true for testnet
   const walletAddress = process.env.TURNKEY_SIGN_WITH;
   const sdk = new Hyperliquid(testnet, turnkeySigner, walletAddress); 
-
-  console.log('sdk', sdk);
 
   try {
     console.log("Testing ExchangeAPI endpoints:");
