@@ -7,8 +7,8 @@ const { Turnkey: TurnkeyServerSDK } = require("@turnkey/sdk-server");
 const { Hyperliquid } = require("../dist/index");
 const readline = require("readline");
 
-// Load environment variables from `.env.local`
-require("dotenv").config({ path: path.resolve(process.cwd(), ".env.local") });
+// Load environment variables from `.env`
+require("dotenv").config({ path: path.resolve(process.cwd(), ".env") });
 
 const turnkeyClient = new TurnkeyServerSDK({
   apiBaseUrl: process.env.TURNKEY_BASE_URL,
@@ -39,9 +39,9 @@ function waitForUserInput(message) {
 
 async function testCustomExchangeAPI() {
   // Initialize the SDK (replace with your actual private key and other necessary parameters)
-  const testnet = process.env.MAINNET ? false : true;// false for mainnet, true for testnet
+  const testnet = process.env.MAINNET ? false : true; // false for mainnet, true for testnet
   const walletAddress = process.env.TURNKEY_SIGN_WITH;
-  const sdk = new Hyperliquid(testnet, turnkeySigner, walletAddress); 
+  const sdk = new Hyperliquid(testnet, turnkeySigner, walletAddress);
 
   try {
     const cancelResponse = await sdk.custom.cancelAllOrders();
@@ -55,7 +55,7 @@ async function testCustomExchangeAPI() {
 
 async function testExchangeAPI() {
   // Initialize the SDK (replace with your actual private key and other necessary parameters)
-  const testnet = process.env.MAINNET ? false : true;// false for mainnet, true for testnet
+  const testnet = process.env.MAINNET ? false : true; // false for mainnet, true for testnet
   const walletAddress = process.env.TURNKEY_SIGN_WITH;
   const sdk = new Hyperliquid(testnet, turnkeySigner, walletAddress); 
 
@@ -66,11 +66,11 @@ async function testExchangeAPI() {
     const orderRequest = {
       coin: "BTC-PERP",
       is_buy: true,
-      sz: 0.001,
-      limit_px: 59000,
+      sz: 0.0001,
+      limit_px: 101000,
       order_type: { limit: { tif: "Gtc" } },
       reduce_only: false,
-      cloid: process.env.cloid,
+      cloid: process.env.CLOID,
     };
 
     console.log("\n1. Place Order:");
@@ -96,7 +96,7 @@ async function testExchangeAPI() {
     // console.log(JSON.stringify(placeOrderResponse));
     const cancelByCloidResponse = await sdk.exchange.cancelOrderByCloid(
       "BTC-PERP",
-      process.env.cloid
+      process.env.CLOID
     );
     console.log(JSON.stringify(cancelByCloidResponse));
     await waitForUserInput("Press Enter to continue to Modify Order...");

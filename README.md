@@ -1,5 +1,7 @@
 # Hyperliquid API SDK
 
+TODO: update with Turnkey-related details
+
 Typescript SDK to more easily interact with Hyperliquid's API
 
 All info on the Hyperliquid API can be found here: [HyperLiquid API Documentation](https://hyperliquid.gitbook.io/hyperliquid-docs)
